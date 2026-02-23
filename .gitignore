@@ -1,0 +1,15 @@
+# Секреты
+.env
+google_credentials.json
+
+# База данных
+*.db
+*.sqlite3
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
