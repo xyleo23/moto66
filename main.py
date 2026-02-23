@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN, SUPERADMIN_ID
@@ -31,7 +31,7 @@ async def main() -> None:
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN не задан в .env")
 
-    bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.startup.register(on_startup)
