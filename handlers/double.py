@@ -15,6 +15,7 @@ from database.engine import async_session_maker
 from database.models import User, DoubleRequest
 from services.user import get_user_by_telegram_id
 from states.double import DoubleRequestStates
+from keyboards.fsm import get_cancel_keyboard
 
 router = Router(name="double")
 
@@ -46,7 +47,10 @@ async def start_double_request(message: Message, state: FSMContext) -> None:
         return
 
     await state.set_state(DoubleRequestStates.date_route)
-    await message.answer("Введите дату и маршрут поездки (например: 20.03.2025, Москва — Тула):")
+    await message.answer(
+        "Введите дату и маршрут поездки (например: 20.03.2025, Москва — Тула):",
+        reply_markup=get_cancel_keyboard(),
+    )
 
 
 @router.message(F.text == "Заявка на двойку")

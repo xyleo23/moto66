@@ -14,6 +14,7 @@ from database.engine import async_session_maker
 from database.models import User, Event, EventRegistration, SosSignal
 from keyboards.main_menu import get_main_keyboard
 from keyboards.admin import get_admin_keyboard, get_moto_type_event_keyboard, get_back_to_admin_keyboard
+from keyboards.fsm import get_cancel_keyboard, get_back_cancel_keyboard
 from states.event import EventCreationStates
 from states.broadcast import BroadcastStates
 
@@ -55,6 +56,7 @@ async def start_create_event(callback: CallbackQuery, state: FSMContext) -> None
         return
     await state.set_state(EventCreationStates.name)
     await callback.message.edit_text("Введите название мероприятия:")
+    await callback.message.answer("\u200b", reply_markup=get_cancel_keyboard())  # zwnj для клавиатуры
     await callback.answer()
 
 
@@ -62,21 +64,39 @@ async def start_create_event(callback: CallbackQuery, state: FSMContext) -> None
 async def event_name(message: Message, state: FSMContext) -> None:
     await state.update_data(name=message.text.strip()[:200])
     await state.set_state(EventCreationStates.description)
-    await message.answer("Введите описание:")
+    await message.answer("Введите описание:", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(EventCreationStates.description, F.text == "⬅️ Назад")
+async def event_back_description(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.name)
+    await message.answer("Введите название мероприятия:", reply_markup=get_cancel_keyboard())
 
 
 @router.message(EventCreationStates.description, F.text)
 async def event_description(message: Message, state: FSMContext) -> None:
     await state.update_data(description=message.text.strip())
     await state.set_state(EventCreationStates.date_place)
-    await message.answer("Введите дату и место (например: 15.03.2025 10:00, Москва):")
+    await message.answer("Введите дату и место (например: 15.03.2025 10:00, Москва):", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(EventCreationStates.date_place, F.text == "⬅️ Назад")
+async def event_back_date_place(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.description)
+    await message.answer("Введите описание:", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(EventCreationStates.date_place, F.text)
 async def event_date_place(message: Message, state: FSMContext) -> None:
     await state.update_data(date_place=message.text.strip())
     await state.set_state(EventCreationStates.route)
-    await message.answer("Введите ссылку на маршрут (или «нет»):")
+    await message.answer("Введите ссылку на маршрут (или «нет»):", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(EventCreationStates.route, F.text == "⬅️ Назад")
+async def event_back_route(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.date_place)
+    await message.answer("Введите дату и место (например: 15.03.2025 10:00, Москва):", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(EventCreationStates.route, F.text)
@@ -85,21 +105,39 @@ async def event_route(message: Message, state: FSMContext) -> None:
     route = None if text in ("нет", "—", "-") else message.text.strip()[:500]
     await state.update_data(route=route)
     await state.set_state(EventCreationStates.price)
-    await message.answer("Цена участия (руб, 0 = бесплатно):")
+    await message.answer("Цена участия (руб, 0 = бесплатно):", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(EventCreationStates.price, F.text == "⬅️ Назад")
+async def event_back_price(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.route)
+    await message.answer("Введите ссылку на маршрут (или «нет»):", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(EventCreationStates.price, F.text.regexp(r"^\d+$"))
 async def event_price(message: Message, state: FSMContext) -> None:
     await state.update_data(price=int(message.text))
     await state.set_state(EventCreationStates.max_participants)
-    await message.answer("Максимальное количество участников (0 = без лимита):")
+    await message.answer("Максимальное количество участников (0 = без лимита):", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(EventCreationStates.max_participants, F.text == "⬅️ Назад")
+async def event_back_max(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.price)
+    await message.answer("Цена участия (руб, 0 = бесплатно):", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(EventCreationStates.max_participants, F.text.regexp(r"^\d+$"))
 async def event_max_participants(message: Message, state: FSMContext) -> None:
     await state.update_data(max_participants=int(message.text))
     await state.set_state(EventCreationStates.min_experience)
-    await message.answer("Минимальный стаж вождения (лет, 0 = не важно):")
+    await message.answer("Минимальный стаж вождения (лет, 0 = не важно):", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(EventCreationStates.min_experience, F.text == "⬅️ Назад")
+async def event_back_min_exp(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.max_participants)
+    await message.answer("Максимальное количество участников (0 = без лимита):", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(EventCreationStates.min_experience, F.text.regexp(r"^\d+$"))
@@ -109,14 +147,26 @@ async def event_min_experience(message: Message, state: FSMContext) -> None:
     await message.answer("Требуемый тип мотоцикла:", reply_markup=get_moto_type_event_keyboard())
 
 
+@router.message(EventCreationStates.moto_type, F.text == "⬅️ Назад")
+async def event_back_moto(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.min_experience)
+    await message.answer("Минимальный стаж вождения (лет, 0 = не важно):", reply_markup=get_back_cancel_keyboard())
+
+
 @router.callback_query(EventCreationStates.moto_type, F.data.startswith("emoto:"))
 async def event_moto_type(callback: CallbackQuery, state: FSMContext) -> None:
     moto = callback.data.split(":", 1)[1]
     await state.update_data(moto_type=moto if moto != "любой" else None)
     await state.set_state(EventCreationStates.min_engine_capacity)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer("Минимальный объём двигателя (см³, 0 = не важно):")
+    await callback.message.answer("Минимальный объём двигателя (см³, 0 = не важно):", reply_markup=get_back_cancel_keyboard())
     await callback.answer()
+
+
+@router.message(EventCreationStates.min_engine_capacity, F.text == "⬅️ Назад")
+async def event_back_min_cap(message: Message, state: FSMContext) -> None:
+    await state.set_state(EventCreationStates.moto_type)
+    await message.answer("Требуемый тип мотоцикла:", reply_markup=get_moto_type_event_keyboard())
 
 
 @router.message(EventCreationStates.min_engine_capacity, F.text.regexp(r"^\d+$"))
@@ -193,6 +243,7 @@ async def start_broadcast(callback: CallbackQuery, state: FSMContext) -> None:
         "Отправьте сообщение для рассылки (текст, фото или видео):",
         reply_markup=get_back_to_admin_keyboard(),
     )
+    await callback.message.answer("\u200b", reply_markup=get_cancel_keyboard())
     await callback.answer()
 
 
@@ -205,7 +256,7 @@ async def broadcast_photo(message: Message, state: FSMContext) -> None:
         caption=message.caption or "",
     )
     await state.set_state(BroadcastStates.confirm)
-    await message.answer("Начать рассылку? (да/нет)")
+    await message.answer("Начать рассылку? (да/нет)", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(BroadcastStates.message, F.video)
@@ -217,7 +268,7 @@ async def broadcast_video(message: Message, state: FSMContext) -> None:
         caption=message.caption or "",
     )
     await state.set_state(BroadcastStates.confirm)
-    await message.answer("Начать рассылку? (да/нет)")
+    await message.answer("Начать рассылку? (да/нет)", reply_markup=get_back_cancel_keyboard())
 
 
 @router.message(BroadcastStates.message, F.text)
@@ -225,7 +276,14 @@ async def broadcast_text(message: Message, state: FSMContext) -> None:
     """Рассылка: текст."""
     await state.update_data(content_type="text", text=message.text)
     await state.set_state(BroadcastStates.confirm)
-    await message.answer("Начать рассылку? (да/нет)")
+    await message.answer("Начать рассылку? (да/нет)", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(BroadcastStates.confirm, F.text == "⬅️ Назад")
+async def broadcast_back_confirm(message: Message, state: FSMContext) -> None:
+    """Назад: подтверждение -> сообщение."""
+    await state.set_state(BroadcastStates.message)
+    await message.answer("Отправьте сообщение для рассылки (текст, фото или видео):", reply_markup=get_cancel_keyboard())
 
 
 @router.message(BroadcastStates.confirm, F.text)

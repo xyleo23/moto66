@@ -13,24 +13,26 @@ def get_sos_problem_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="Тех. поломка", callback_data="sos:Тех. поломка"),
             InlineKeyboardButton(text="Другое", callback_data="sos:Другое"),
         ],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_fsm")],
     ])
 
 
-def get_location_keyboard() -> ReplyKeyboardMarkup:
-    """Кнопка «Поделиться геопозицией»."""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📍 Поделиться геопозицией", request_location=True)]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
+def get_location_keyboard(has_back: bool = True) -> ReplyKeyboardMarkup:
+    """Кнопка «Поделиться геопозицией» + навигация."""
+    from keyboards.fsm import get_back_cancel_keyboard, get_cancel_keyboard
+    nav = get_back_cancel_keyboard() if has_back else get_cancel_keyboard()
+    rows = list(nav.keyboard) + [[KeyboardButton(text="📍 Поделиться геопозицией", request_location=True)]]
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 
 def get_skip_description_keyboard() -> InlineKeyboardMarkup:
-    """Пропустить описание."""
+    """Пропустить описание + навигация."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Пропустить", callback_data="sos_skip_desc")],
+        [
+            InlineKeyboardButton(text="⬅️ Назад", callback_data="sos_back:location"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_fsm"),
+        ],
     ])
 
 

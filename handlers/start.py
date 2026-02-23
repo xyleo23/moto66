@@ -29,6 +29,11 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         )
         return
 
+    await message.answer(
+        "👋 Добро пожаловать в закрытое мотосообщество!\n\n"
+        "Чтобы получить доступ к мероприятиям и функциям бота, "
+        "пожалуйста, пройди короткую регистрацию."
+    )
     await start_registration(message, state)
 
 

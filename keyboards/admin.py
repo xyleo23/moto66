@@ -27,6 +27,7 @@ def get_moto_type_event_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="Нейкед", callback_data="emoto:нейкед"),
             InlineKeyboardButton(text="Любой", callback_data="emoto:любой"),
         ],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_fsm")],
     ])
 
 

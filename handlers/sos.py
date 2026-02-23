@@ -1,6 +1,7 @@
 """SOS: рассылка всем пользователям, кнопка «Еду на помощь»."""
 import asyncio
 from aiogram import Router, F
+from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, Location
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
@@ -16,6 +17,7 @@ from keyboards.sos import (
     get_skip_description_keyboard,
     get_help_button_keyboard,
 )
+from keyboards.fsm import get_back_cancel_keyboard
 
 router = Router(name="sos")
 
@@ -32,6 +34,7 @@ async def start_sos(message: Message, state: FSMContext) -> None:
     await message.answer("Выберите тип проблемы:", reply_markup=get_sos_problem_keyboard())
 
 
+@router.message(Command("sos"))
 @router.message(F.text == "Кнопка SOS 🆘")
 async def btn_sos(message: Message, state: FSMContext) -> None:
     """Кнопка «SOS»."""
@@ -52,6 +55,13 @@ async def sos_problem_selected(callback: CallbackQuery, state: FSMContext) -> No
     await callback.answer()
 
 
+@router.message(SosStates.location, F.text == "⬅️ Назад")
+async def sos_back_location(message: Message, state: FSMContext) -> None:
+    """Назад: геолокация -> тип проблемы."""
+    await state.set_state(SosStates.problem_type)
+    await message.answer("Выберите тип проблемы:", reply_markup=get_sos_problem_keyboard())
+
+
 @router.message(SosStates.location, F.location)
 async def sos_location(message: Message, state: FSMContext) -> None:
     """Геолокация получена."""
@@ -63,6 +73,15 @@ async def sos_location(message: Message, state: FSMContext) -> None:
         "Краткое описание (или нажмите «Пропустить»):",
         reply_markup=get_skip_description_keyboard(),
     )
+
+
+@router.callback_query(SosStates.description, F.data == "sos_back:location")
+async def sos_back_description(callback: CallbackQuery, state: FSMContext) -> None:
+    """Назад: описание -> геолокация."""
+    await state.set_state(SosStates.location)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer("Отправьте вашу геопозицию:", reply_markup=get_location_keyboard(has_back=True))
+    await callback.answer()
 
 
 @router.callback_query(SosStates.description, F.data == "sos_skip_desc")

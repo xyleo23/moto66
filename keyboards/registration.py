@@ -7,15 +7,12 @@ from aiogram.types import (
 )
 
 
-def get_contact_keyboard() -> ReplyKeyboardMarkup:
-    """Кнопка «Поделиться контактом»."""
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Поделиться контактом", request_contact=True)]
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
+def get_contact_keyboard(has_back: bool = True) -> ReplyKeyboardMarkup:
+    """Кнопка «Поделиться контактом» + навигация."""
+    from keyboards.fsm import get_back_cancel_keyboard, get_cancel_keyboard
+    nav = get_back_cancel_keyboard() if has_back else get_cancel_keyboard()
+    rows = list(nav.keyboard) + [[KeyboardButton(text="📱 Поделиться контактом", request_contact=True)]]
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 
 def get_moto_type_keyboard() -> InlineKeyboardMarkup:
@@ -30,6 +27,7 @@ def get_moto_type_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="Эндуро", callback_data="moto:эндуро"),
         ],
         [InlineKeyboardButton(text="Нейкед", callback_data="moto:нейкед")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_fsm")],
     ])
 
 
@@ -40,6 +38,7 @@ def get_category_a_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="Да", callback_data="cat_a:yes"),
             InlineKeyboardButton(text="Нет", callback_data="cat_a:no"),
         ],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_fsm")],
     ])
 
 

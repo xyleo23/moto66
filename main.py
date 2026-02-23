@@ -8,6 +8,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
 
 from config import BOT_TOKEN, SUPERADMIN_ID
 from database import init_db
@@ -24,6 +25,12 @@ async def on_startup(bot: Bot) -> None:
     """Действия при запуске бота."""
     logger.info("Создание таблиц БД...")
     await init_db()
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Главное меню / Регистрация"),
+        BotCommand(command="cancel", description="Отменить текущее действие"),
+        BotCommand(command="sos", description="Экстренная помощь"),
+        BotCommand(command="admin", description="Админ-панель"),
+    ])
     logger.info("Бот запущен. Superadmin ID: %s", SUPERADMIN_ID)
 
 

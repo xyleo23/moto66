@@ -13,13 +13,18 @@ from keyboards.registration import (
     get_moto_type_keyboard,
     get_category_a_keyboard,
 )
+from keyboards.fsm import get_cancel_keyboard, get_back_cancel_keyboard
+
 router = Router(name="registration")
 
 
 async def start_registration(message: Message, state: FSMContext) -> None:
     """Запуск анкеты."""
     await state.set_state(RegistrationStates.name)
-    await message.answer("Добро пожаловать! Заполните анкету.\n\nКак вас зовут? (имя или псевдоним)")
+    await message.answer(
+        "Как вас зовут? (имя или псевдоним)",
+        reply_markup=get_cancel_keyboard(),
+    )
 
 
 @router.message(RegistrationStates.name, F.text)
@@ -29,8 +34,15 @@ async def process_name(message: Message, state: FSMContext) -> None:
     await state.set_state(RegistrationStates.phone)
     await message.answer(
         "Отправьте номер телефона:",
-        reply_markup=get_contact_keyboard(),
+        reply_markup=get_contact_keyboard(has_back=True),
     )
+
+
+@router.message(RegistrationStates.phone, F.text == "⬅️ Назад")
+async def reg_back_phone(message: Message, state: FSMContext) -> None:
+    """Назад: телефон -> имя."""
+    await state.set_state(RegistrationStates.name)
+    await message.answer("Как вас зовут? (имя или псевдоним)", reply_markup=get_cancel_keyboard())
 
 
 @router.message(RegistrationStates.phone)
@@ -43,9 +55,16 @@ async def process_phone(message: Message, state: FSMContext) -> None:
         phone = message.contact.phone_number or ""
         await state.update_data(phone=phone)
         await state.set_state(RegistrationStates.driving_experience)
-        await message.answer("Ваш стаж вождения в годах? (число)", reply_markup=None)
+        await message.answer("Ваш стаж вождения в годах? (число)", reply_markup=get_back_cancel_keyboard())
         return
-    await message.answer("Нажмите кнопку «Поделиться контактом»:", reply_markup=get_contact_keyboard())
+    await message.answer("Нажмите кнопку «Поделиться контактом»:", reply_markup=get_contact_keyboard(has_back=True))
+
+
+@router.message(RegistrationStates.driving_experience, F.text == "⬅️ Назад")
+async def reg_back_experience(message: Message, state: FSMContext) -> None:
+    """Назад: стаж -> телефон."""
+    await state.set_state(RegistrationStates.phone)
+    await message.answer("Отправьте номер телефона:", reply_markup=get_contact_keyboard(has_back=True))
 
 
 @router.message(RegistrationStates.driving_experience, F.text.regexp(r"^\d+$"))
@@ -67,7 +86,14 @@ async def process_moto_type(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(motorcycle_type=moto_type)
     await state.set_state(RegistrationStates.engine_capacity)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer("Объём двигателя в кубах? (число, например 600)")
+    await callback.message.answer("Объём двигателя в кубах? (число, например 600)", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(RegistrationStates.engine_capacity, F.text == "⬅️ Назад")
+async def reg_back_engine(message: Message, state: FSMContext) -> None:
+    """Назад: объём -> тип мото."""
+    await state.set_state(RegistrationStates.motorcycle_type)
+    await message.answer("Выберите тип мотоцикла:", reply_markup=get_moto_type_keyboard())
 
 
 @router.message(RegistrationStates.engine_capacity, F.text.regexp(r"^\d+$"))
@@ -89,7 +115,14 @@ async def process_category_a(callback: CallbackQuery, state: FSMContext) -> None
     await state.update_data(category_a=category_a)
     await state.set_state(RegistrationStates.city)
     await callback.message.edit_reply_markup(reply_markup=None)
-    await callback.message.answer("Ваш город?")
+    await callback.message.answer("Ваш город?", reply_markup=get_back_cancel_keyboard())
+
+
+@router.message(RegistrationStates.city, F.text == "⬅️ Назад")
+async def reg_back_city(message: Message, state: FSMContext) -> None:
+    """Назад: город -> категория А."""
+    await state.set_state(RegistrationStates.category_a)
+    await message.answer("Есть права категории А?", reply_markup=get_category_a_keyboard())
 
 
 @router.message(RegistrationStates.city, F.text)
